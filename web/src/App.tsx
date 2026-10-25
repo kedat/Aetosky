@@ -1,11 +1,27 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EarthquakeMap } from "./EarthquakeMap";
+import { EventDetails } from "./EventDetails";
 import { dateFormat, displayTimeZone } from "./formatting";
 import { useEarthquakes } from "./useEarthquakes";
 
 export function App() {
   const { state, request } = useEarthquakes();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectionTrigger = useRef<HTMLElement | SVGElement | null>(null);
+  const selectEvent = useCallback((id: string) => {
+    const trigger = document.activeElement;
+    selectionTrigger.current = trigger instanceof HTMLElement || trigger instanceof SVGElement ? trigger : null;
+    setSelectedId(id);
+  }, []);
+  const closeDetails = useCallback(() => {
+    setSelectedId(null);
+    selectionTrigger.current?.focus({ preventScroll: true });
+  }, []);
   const snapshot = state.snapshot;
+  useEffect(() => {
+    if (snapshot && selectedId && !snapshot.events.some(event => event.id === selectedId)) setSelectedId(null);
+  }, [snapshot, selectedId]);
+  const selectedEvent = snapshot?.events.find(event => event.id === selectedId) ?? null;
   return <div className="app-shell">
     <header className="app-header">
       <a className="brand" href="/" aria-label="Earthquake Explorer home">
@@ -35,14 +51,15 @@ export function App() {
       </section>
 
       <div className="map-section" aria-busy={state.status === "loading"}>
-        <EarthquakeMap events={snapshot?.events ?? []} />
+        <EarthquakeMap events={snapshot?.events ?? []} selectedId={selectedEvent?.id ?? null} onSelect={selectEvent} />
+        {selectedEvent && <EventDetails event={selectedEvent} onClose={closeDetails} />}
         {!snapshot && state.status === "loading" && <div className="map-notice" role="status"><span className="spinner" aria-hidden="true" /><strong>Loading earthquake activity…</strong><span>Getting earthquake data from USGS.</span></div>}
         {!snapshot && state.status === "error" && <div className="map-notice" role="alert"><span className="notice-icon" aria-hidden="true">!</span><strong>Earthquake data couldn't load.</strong><span>{state.error}</span><button onClick={() => void request(state.requested, state.intent)}>Retry</button></div>}
         {snapshot?.count === 0 && <div className="map-notice" role="status"><strong>No earthquakes match the displayed filters.</strong><span>{state.status === "ready" ? "No earthquake events were returned for this overview." : "These are the previous successful results."}</span></div>}
       </div>
 
       <footer className="data-footer">
-        <p>USGS-recorded earthquakes</p>
+        <p>USGS-recorded earthquakes <span aria-hidden="true">·</span> Select a marker for details</p>
         <div aria-live="polite">{snapshot ? <>
           <span>Data generated: {snapshot.source.generatedAt ? <time dateTime={snapshot.source.generatedAt}>{dateFormat.format(new Date(snapshot.source.generatedAt))}</time> : "Not provided"}</span>
           <span>Retrieved: <time dateTime={snapshot.source.retrievedAt}>{dateFormat.format(new Date(snapshot.source.retrievedAt))}</time></span>

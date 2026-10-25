@@ -8,9 +8,48 @@ const WORLD_BOUNDS: [[number, number], [number, number]] = [[-60, -180], [75, 18
 
 export interface EarthquakeMapProps {
   events: Earthquake[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
 }
 
-export function EarthquakeMap({ events }: EarthquakeMapProps) {
+function EarthquakeMarker({ event, selected, onSelect }: { event: Earthquake; selected: boolean; onSelect: (id: string) => void }) {
+  const marker = useRef<LeafletCircleMarker>(null);
+  const radius = event.magnitude === null ? 4 : Math.max(3, 3 + Math.max(0, event.magnitude) * 1.6);
+  const select = () => {
+    const element = marker.current?.getElement();
+    if (element instanceof SVGElement) element.focus({ preventScroll: true });
+    onSelect(event.id);
+  };
+  useEffect(() => {
+    const element = marker.current?.getElement();
+    if (!element) return;
+    element.setAttribute("tabindex", "0");
+    element.setAttribute("role", "button");
+    element.setAttribute("aria-label", `Magnitude ${event.magnitude === null ? "unknown" : magnitudeFormat.format(event.magnitude)} earthquake: ${event.place ?? "location not available"}`);
+    element.setAttribute("aria-pressed", String(selected));
+    if (selected) element.setAttribute("aria-controls", "event-details-panel");
+    else element.removeAttribute("aria-controls");
+    element.setAttribute("data-earthquake-id", event.id);
+    const keydown = (key: Event) => {
+      if (key instanceof KeyboardEvent && (key.key === "Enter" || key.key === " ")) {
+        key.preventDefault();
+        key.stopPropagation();
+        if (element instanceof SVGElement) element.focus({ preventScroll: true });
+        onSelect(event.id);
+      }
+    };
+    element.addEventListener("keydown", keydown);
+    if (selected) marker.current?.bringToFront();
+    return () => element.removeEventListener("keydown", keydown);
+  }, [event, selected, onSelect]);
+
+  return <CircleMarker ref={marker} className="earthquake-marker" center={[event.latitude, event.longitude]} radius={radius + (selected ? 3 : 0)}
+    eventHandlers={{ click: select }} bubblingMouseEvents={false}
+    pathOptions={{ color: selected ? "#173e52" : event.magnitude === null ? "#64748b" : "#c24c24",
+      weight: selected ? 3 : 1.2, fillColor: event.magnitude === null ? "#94a3b8" : "#ef7846", fillOpacity: selected ? 0.95 : 0.65 }} />;
+}
+
+export function EarthquakeMap({ events, selectedId, onSelect }: EarthquakeMapProps) {
   const renderer = useMemo(() => new SVG({ padding: 0.5 }), []);
   const failedTiles = useRef(new Set<HTMLImageElement>());
   const [tilesFailed, setTilesFailed] = useState(false);
@@ -31,7 +70,7 @@ export function EarthquakeMap({ events }: EarthquakeMapProps) {
           tileunload: clearTileFailure,
           // Leaflet's layer `load` fires even when every tile failed.
         }} />
-      {events.map(event => <CircleMarker key={event.id} center={[event.latitude, event.longitude]} radius={event.magnitude === null ? 4 : Math.max(3, 3 + Math.max(0, event.magnitude) * 1.6)} pathOptions={{ color: "#c24c24", fillColor: "#ef7846", fillOpacity: 0.65, weight: 1.2 }} />)}
+      {events.map(event => <EarthquakeMarker key={event.id} event={event} selected={event.id === selectedId} onSelect={onSelect} />)}
     </MapContainer>
     {tilesFailed && <div className="tile-warning" role="status">Some map tiles couldn't load. Earthquake data is separate from the basemap.</div>}
     <div className="map-legend" aria-label="Magnitude legend">

@@ -1,6 +1,6 @@
-# Earthquake Explorer — Task 1
+# Earthquake Explorer — Task 2
 
-Worldwide USGS overview. React and Node.js use TypeScript with pnpm.
+Selectable earthquake details. React and Node.js use TypeScript with pnpm.
 
 ## Run
 
@@ -18,6 +18,7 @@ Open http://localhost:5173. The USGS API proxy listens on port 3001.
 ```sh
 pnpm typecheck
 pnpm test:server
+pnpm test:web
 pnpm build
 ```
 
