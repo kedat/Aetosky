@@ -1,4 +1,4 @@
-import type { Earthquake, OverviewSnapshot } from "@earthquake/shared";
+import type { Earthquake, OverviewSnapshot, EarthquakeRequest } from "@earthquake/shared";
 
 export const FEED_URL = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson";
 export const CATALOG_URL = "https://earthquake.usgs.gov/fdsnws/event/1/";
@@ -129,4 +129,54 @@ export async function loadOverview({ fetcher = fetch, now = () => new Date(), ti
     throw new UsgsError("UPSTREAM_UNAVAILABLE");
   }
   return normalizeOverview(payload, now().toISOString());
+}
+
+export async function loadTimeRange(request: EarthquakeRequest, { fetcher = fetch, now = () => new Date(), timeoutMs = 15_000, signal: callerSignal }: LoadOptions = {}): Promise<OverviewSnapshot> {
+  const magnitude = { minimum: null, maximum: null };
+  const area = "worldwide";
+  if (request.preset === "past-24-hours" && magnitude.minimum === null && magnitude.maximum === null && area === "worldwide") return loadOverview({ fetcher, now, timeoutMs, ...(callerSignal ? { signal: callerSignal } : {}) });
+  // Resolve relative periods once, then reuse the exact bounds for count/query.
+  const end = request.preset === "custom" ? request.end : new Date(Math.floor(now().getTime() / 1000) * 1000).toISOString();
+  const time: OverviewSnapshot["scope"]["time"] = {
+    preset: request.preset,
+    start: request.preset === "custom" ? request.start : new Date(Date.parse(end) - (request.preset === "past-7-days" ? 7 : 1) * DAY_MS).toISOString(),
+    end,
+  };
+  const signal = AbortSignal.any([AbortSignal.timeout(timeoutMs), ...(callerSignal ? [callerSignal] : [])]);
+  const parameters = new URLSearchParams({
+    format: "geojson", eventtype: "earthquake",
+    // Enclose subsecond bounds; normalizeEvents enforces the precise window.
+    starttime: new Date(Math.floor(Date.parse(time.start) / 1000) * 1000).toISOString(),
+    endtime: new Date(Math.ceil(Date.parse(time.end) / 1000) * 1000).toISOString(),
+  });
+  async function getJson(url: string): Promise<unknown | null> {
+    try {
+      const response = await fetcher(url, { signal, headers: { Accept: "application/json", "User-Agent": "EarthquakeExplorer/0.1" } });
+      if (response.status === 204) return null;
+      if (!response.ok) {
+        const text = await response.text();
+        if (response.status === 400 && text.includes("exceeds search limit")) throw new UsgsError("RESULT_LIMIT_EXCEEDED");
+        throw new UsgsError("UPSTREAM_UNAVAILABLE");
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof UsgsError) throw error;
+      throw new UsgsError("UPSTREAM_UNAVAILABLE");
+    }
+  }
+  const counted = await getJson(`${CATALOG_URL}count?${parameters}`);
+  const countBody = counted === null ? { count: 0 } : record(counted);
+  if (!finite(countBody.count) || !Number.isInteger(countBody.count) || countBody.count < 0) throw new UsgsError("UPSTREAM_INVALID_RESPONSE");
+  if (countBody.count > MAX_EVENTS) throw new UsgsError("RESULT_LIMIT_EXCEEDED");
+  if (countBody.error || (finite(countBody.status) && countBody.status >= 400)) throw new UsgsError("UPSTREAM_INVALID_RESPONSE");
+  parameters.set("orderby", "time");
+  // One extra event detects growth since the count request, without truncating.
+  parameters.set("limit", String(MAX_EVENTS + 1));
+  const url = `${CATALOG_URL}query?${parameters}`;
+  const payload = await getJson(url);
+  const retrievedAt = now().toISOString();
+  if (payload === null) return snapshot([], time.end, null, retrievedAt, time, url, magnitude, area);
+  const { features, generatedAt } = collection(payload);
+  if (features.length > MAX_EVENTS) throw new UsgsError("RESULT_LIMIT_EXCEEDED");
+  return snapshot(normalizeEvents(features, time.start, time.end, magnitude, area), time.end, generatedAt, retrievedAt, time, url, magnitude, area);
 }

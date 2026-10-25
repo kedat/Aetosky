@@ -10,7 +10,15 @@ interface RequestState {
   intent: "apply" | "reset";
 }
 
-function requestUrl(_time: EarthquakeRequest): string { return "/api/earthquakes"; }
+function requestUrl(time: EarthquakeRequest): string {
+  if (time.preset === "past-24-hours" && time.minMagnitude === undefined && time.maxMagnitude === undefined && !time.area) return "/api/earthquakes";
+  const query = new URLSearchParams({ preset: time.preset });
+  if (time.preset === "custom") {
+    query.set("starttime", time.start);
+    query.set("endtime", time.end);
+  }
+  return `/api/earthquakes?${query}`;
+}
 
 function validSnapshot(snapshot: OverviewSnapshot, requested: EarthquakeRequest): boolean {
   const time = snapshot.scope?.time;

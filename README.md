@@ -1,6 +1,6 @@
-# Earthquake Explorer — Task 2
+# Earthquake Explorer — Task 3
 
-Selectable earthquake details. React and Node.js use TypeScript with pnpm.
+Staged time filters. React and Node.js use TypeScript with pnpm.
 
 ## Run
 
