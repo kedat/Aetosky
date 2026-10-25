@@ -17,6 +17,8 @@ function requestUrl(time: EarthquakeRequest): string {
     query.set("starttime", time.start);
     query.set("endtime", time.end);
   }
+  if (time.minMagnitude !== undefined) query.set("minmagnitude", String(time.minMagnitude));
+  if (time.maxMagnitude !== undefined) query.set("maxmagnitude", String(time.maxMagnitude));
   return `/api/earthquakes?${query}`;
 }
 

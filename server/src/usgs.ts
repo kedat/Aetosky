@@ -78,6 +78,8 @@ function normalizeEvents(features: unknown[], start: string, end: string,
     const occurredMs = Date.parse(occurredAt);
     if (occurredMs < startMs || occurredMs > endMs) continue;
     const value = numberOrNull(properties.mag);
+    if ((magnitude.minimum !== null || magnitude.maximum !== null) &&
+        (value === null || (magnitude.minimum !== null && value < magnitude.minimum) || (magnitude.maximum !== null && value > magnitude.maximum))) continue;
     events.push({
       id,
       longitude: coordinates[0],
@@ -132,7 +134,7 @@ export async function loadOverview({ fetcher = fetch, now = () => new Date(), ti
 }
 
 export async function loadTimeRange(request: EarthquakeRequest, { fetcher = fetch, now = () => new Date(), timeoutMs = 15_000, signal: callerSignal }: LoadOptions = {}): Promise<OverviewSnapshot> {
-  const magnitude = { minimum: null, maximum: null };
+  const magnitude = { minimum: request.minMagnitude ?? null, maximum: request.maxMagnitude ?? null };
   const area = "worldwide";
   if (request.preset === "past-24-hours" && magnitude.minimum === null && magnitude.maximum === null && area === "worldwide") return loadOverview({ fetcher, now, timeoutMs, ...(callerSignal ? { signal: callerSignal } : {}) });
   // Resolve relative periods once, then reuse the exact bounds for count/query.
@@ -149,6 +151,8 @@ export async function loadTimeRange(request: EarthquakeRequest, { fetcher = fetc
     starttime: new Date(Math.floor(Date.parse(time.start) / 1000) * 1000).toISOString(),
     endtime: new Date(Math.ceil(Date.parse(time.end) / 1000) * 1000).toISOString(),
   });
+  if (magnitude.minimum !== null) parameters.set("minmagnitude", String(magnitude.minimum));
+  if (magnitude.maximum !== null) parameters.set("maxmagnitude", String(magnitude.maximum));
   async function getJson(url: string): Promise<unknown | null> {
     try {
       const response = await fetcher(url, { signal, headers: { Accept: "application/json", "User-Agent": "EarthquakeExplorer/0.1" } });

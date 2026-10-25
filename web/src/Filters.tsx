@@ -1,19 +1,23 @@
 import type { TimePreset } from "@earthquake/shared";
 import { displayTimeZone } from "./formatting";
 import type { TimeDraft, TimeErrors } from "./timeRange";
+import type { MagnitudeDraft, MagnitudeErrors } from "./magnitudeRange";
 
 interface Props {
   draft: TimeDraft;
   errors: TimeErrors;
+  magnitude: MagnitudeDraft;
+  magnitudeErrors: MagnitudeErrors;
   pending: boolean;
   busy: boolean;
   initialLoading: boolean;
   valid: boolean;
   onChange: (draft: TimeDraft) => void;
+  onMagnitudeChange: (draft: MagnitudeDraft) => void;
   onApply: () => void;
 }
 
-export function Filters({ draft, errors, pending, busy, initialLoading, valid, onChange, onApply }: Props) {
+export function Filters({ draft, errors, magnitude, magnitudeErrors, pending, busy, initialLoading, valid, onChange, onMagnitudeChange, onApply }: Props) {
   return <form className="time-filters" aria-label="Earthquake filters" noValidate onSubmit={event => { event.preventDefault(); if (!busy && valid && pending) onApply(); }}>
     <fieldset disabled={initialLoading}>
       <legend className="visually-hidden">Filter earthquake activity</legend>
@@ -34,10 +38,24 @@ export function Filters({ draft, errors, pending, busy, initialLoading, valid, o
           <span id="time-end-error" className="field-error">{errors.end}</span>
         </div>
       </>}
+      <div className="magnitude-inputs" role="group" aria-label="Magnitude range">
+        <div className="filter-input"><label htmlFor="magnitude-minimum">Minimum magnitude</label>
+          <input id="magnitude-minimum" type="text" inputMode="decimal" placeholder="Any" value={magnitude.minimum}
+            aria-invalid={!!magnitudeErrors.minimum} aria-describedby="magnitude-minimum-error"
+            onChange={event => onMagnitudeChange({ ...magnitude, minimum: event.target.value })} />
+          <span id="magnitude-minimum-error" className="field-error">{magnitudeErrors.minimum}</span>
+        </div>
+        <div className="filter-input"><label htmlFor="magnitude-maximum">Maximum magnitude</label>
+          <input id="magnitude-maximum" type="text" inputMode="decimal" placeholder="Any" value={magnitude.maximum}
+            aria-invalid={!!magnitudeErrors.maximum} aria-describedby="magnitude-maximum-error"
+            onChange={event => onMagnitudeChange({ ...magnitude, maximum: event.target.value })} />
+          <span id="magnitude-maximum-error" className="field-error">{magnitudeErrors.maximum}</span>
+        </div>
+      </div>
       <div className="apply-controls"><span className="pending-label" role="status">{pending && !initialLoading ? "Pending changes" : ""}</span>
         <button className="apply-button" type="submit" disabled={busy || !pending || !valid}>Apply filters</button>
       </div>
     </fieldset>
-    <p className="filter-help" id="time-zone">Times use {displayTimeZone}. Edit filters, then Apply. Maximum 5,000 events per search.</p>
+    <p className="filter-help" id="time-zone">Times use {displayTimeZone}. Blank magnitude limits are unrestricted. Edit filters, then Apply. Maximum 5,000 events per search.</p>
   </form>;
 }

@@ -1,8 +1,8 @@
 import express from "express";
 import type { ApiError, OverviewSnapshot, EarthquakeRequest } from "@earthquake/shared";
 import { loadOverview, loadTimeRange, UsgsError } from "./usgs.js";
-import { InvalidTimeError, parseTimeQuery } from "./time.js";
-
+import { InvalidTimeError } from "./time.js";
+import { InvalidFilterError, parseFilters } from "./filters.js";
 
 export function createApp(load: (signal?: AbortSignal) => Promise<OverviewSnapshot> = signal => loadOverview(signal ? { signal } : {}),
   search: (request: EarthquakeRequest, signal?: AbortSignal) => Promise<OverviewSnapshot> = (filters, signal) => loadTimeRange(filters, signal ? { signal } : {})) {
@@ -13,13 +13,13 @@ export function createApp(load: (signal?: AbortSignal) => Promise<OverviewSnapsh
     response.once("close", () => { if (!response.writableEnded) controller.abort(); });
     response.set("Cache-Control", "no-store");
     try {
-      const filters: EarthquakeRequest = parseTimeQuery(request.query);
+      const filters = parseFilters(request.query);
       const overview = filters.preset === "past-24-hours" && filters.minMagnitude === undefined && filters.maxMagnitude === undefined && !filters.area;
       const result = overview ? await load(controller.signal) : await search(filters, controller.signal);
       if (!controller.signal.aborted) response.json(result);
     } catch (error) {
       if (controller.signal.aborted) return;
-      if (error instanceof InvalidTimeError) {
+      if (error instanceof InvalidTimeError || error instanceof InvalidFilterError) {
         response.status(400).json({ error: { code: "INVALID_REQUEST", message: error.message } } satisfies ApiError);
         return;
       }
@@ -27,7 +27,7 @@ export function createApp(load: (signal?: AbortSignal) => Promise<OverviewSnapsh
       response.status(code === "RESULT_LIMIT_EXCEEDED" ? 422 : 502).json({ error: {
         code,
         message: code === "RESULT_LIMIT_EXCEEDED"
-          ? "More than 5,000 earthquakes match these filters. Narrow the time range."
+          ? "More than 5,000 earthquakes match these filters. Narrow the time or magnitude range."
           : "Couldn't load earthquake data from USGS. Please try again.",
       } } satisfies ApiError);
     }

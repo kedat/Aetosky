@@ -3,15 +3,18 @@ import { EarthquakeMap } from "./EarthquakeMap";
 import { EventDetails } from "./EventDetails";
 import { dateFormat, displayTimeZone } from "./formatting";
 import { Filters } from "./Filters";
-import { initialTimeDraft, periodLabel, validateTimeDraft, sameTimeRequest } from "./timeRange";
+import { initialTimeDraft, periodLabel, validateTimeDraft } from "./timeRange";
+import { magnitudeLabel, sameFilters, validateMagnitudeDraft } from "./magnitudeRange";
 import { useEarthquakes } from "./useEarthquakes";
 
 export function App() {
   const { state, request } = useEarthquakes();
   const [draft, setDraft] = useState(initialTimeDraft);
+  const [magnitude, setMagnitude] = useState({ minimum: "", maximum: "" });
   const validation = validateTimeDraft(draft);
-  const requested = validation.request;
-  const pending = !sameTimeRequest(requested, state.applied);
+  const magnitudeValidation = validateMagnitudeDraft(magnitude);
+  const requested = validation.request && magnitudeValidation.bounds ? { ...validation.request, ...magnitudeValidation.bounds } : null;
+  const pending = !sameFilters(requested, state.applied);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectionTrigger = useRef<HTMLElement | SVGElement | null>(null);
   const selectEvent = useCallback((id: string) => {
@@ -46,9 +49,9 @@ export function App() {
       </div>
 
       <div className="filter-panel">
-      <Filters draft={draft} errors={validation.errors}
+      <Filters draft={draft} errors={validation.errors} magnitude={magnitude} magnitudeErrors={magnitudeValidation.errors}
         pending={pending} busy={state.status === "loading"} initialLoading={!snapshot && state.status === "loading"}
-        valid={!!requested} onChange={setDraft}
+        valid={!!requested} onChange={setDraft} onMagnitudeChange={setMagnitude}
         onApply={() => {
           if (requested) {
             void request(requested);
@@ -56,7 +59,7 @@ export function App() {
         }} />
       </div>
 
-      {snapshot && state.status === "loading" && <div className="request-banner" role="status"><span className="spinner" aria-hidden="true" />{state.intent === "reset" ? "Returning to overview." : `Updating to ${periodLabel(state.requested.preset)} · worldwide.`} Previous results and scope remain displayed.</div>}
+      {snapshot && state.status === "loading" && <div className="request-banner" role="status"><span className="spinner" aria-hidden="true" />{state.intent === "reset" ? "Returning to overview." : `Updating to ${periodLabel(state.requested.preset)} · ${magnitudeLabel({ minimum: state.requested.minMagnitude ?? null, maximum: state.requested.maxMagnitude ?? null })} · worldwide.`} Previous results and scope remain displayed.</div>}
       {snapshot && state.status === "error" && <div className="request-banner request-error" role="alert"><span>{state.error} Previous results and scope remain displayed.</span><button onClick={() => void request(state.requested, state.intent)}>Retry</button></div>}
 
       <section className="scope-panel" aria-label="Displayed data scope">
@@ -66,7 +69,7 @@ export function App() {
           {snapshot ? <div className="time-range"><time dateTime={snapshot.scope.time.start}>{dateFormat.format(new Date(snapshot.scope.time.start))}</time><span aria-hidden="true">→</span><time dateTime={snapshot.scope.time.end}>{dateFormat.format(new Date(snapshot.scope.time.end))}</time></div>
             : <span className="scope-placeholder">{state.status === "loading" ? "Loading exact time window…" : "Time window unavailable"}</span>}
         </div>
-        <div className="scope-cell"><span className="scope-label">MAGNITUDE</span><strong>All reported magnitudes</strong></div>
+        <div className="scope-cell"><span className="scope-label">MAGNITUDE</span><strong>{magnitudeLabel(snapshot?.scope.magnitude ?? { minimum: null, maximum: null })}</strong></div>
         <div className="scope-cell count-cell"><span className="scope-label">EARTHQUAKES</span><strong>{snapshot ? snapshot.count.toLocaleString() : "—"}</strong></div>
       </section>
 
