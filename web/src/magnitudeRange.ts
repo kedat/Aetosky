@@ -1,5 +1,6 @@
 import type { EarthquakeRequest, MagnitudeBounds, OverviewSnapshot } from "@earthquake/shared";
 import { sameTimeRequest } from "./timeRange";
+import { sameArea } from "./area";
 
 export interface MagnitudeDraft { minimum: string; maximum: string }
 export interface MagnitudeErrors { minimum?: string; maximum?: string }
@@ -24,7 +25,7 @@ export function validateMagnitudeDraft(draft: MagnitudeDraft): { bounds: Magnitu
 }
 
 export function sameFilters(first: EarthquakeRequest | null, second: EarthquakeRequest | null): boolean {
-  return !!first && !!second && sameTimeRequest(first, second) && first.minMagnitude === second.minMagnitude && first.maxMagnitude === second.maxMagnitude;
+  return !!first && !!second && sameTimeRequest(first, second) && first.minMagnitude === second.minMagnitude && first.maxMagnitude === second.maxMagnitude && sameArea(first.area, second.area);
 }
 
 export function magnitudeLabel({ minimum, maximum }: OverviewSnapshot["scope"]["magnitude"]): string {

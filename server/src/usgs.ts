@@ -1,4 +1,5 @@
 import type { Earthquake, OverviewSnapshot, EarthquakeRequest } from "@earthquake/shared";
+import { insideArea } from "./area.js";
 
 export const FEED_URL = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson";
 export const CATALOG_URL = "https://earthquake.usgs.gov/fdsnws/event/1/";
@@ -77,6 +78,7 @@ function normalizeEvents(features: unknown[], start: string, end: string,
     ids.add(id);
     const occurredMs = Date.parse(occurredAt);
     if (occurredMs < startMs || occurredMs > endMs) continue;
+    if (area !== "worldwide" && !insideArea(coordinates[0], coordinates[1], area)) continue;
     const value = numberOrNull(properties.mag);
     if ((magnitude.minimum !== null || magnitude.maximum !== null) &&
         (value === null || (magnitude.minimum !== null && value < magnitude.minimum) || (magnitude.maximum !== null && value > magnitude.maximum))) continue;
@@ -135,7 +137,7 @@ export async function loadOverview({ fetcher = fetch, now = () => new Date(), ti
 
 export async function loadTimeRange(request: EarthquakeRequest, { fetcher = fetch, now = () => new Date(), timeoutMs = 15_000, signal: callerSignal }: LoadOptions = {}): Promise<OverviewSnapshot> {
   const magnitude = { minimum: request.minMagnitude ?? null, maximum: request.maxMagnitude ?? null };
-  const area = "worldwide";
+  const area = request.area ?? "worldwide";
   if (request.preset === "past-24-hours" && magnitude.minimum === null && magnitude.maximum === null && area === "worldwide") return loadOverview({ fetcher, now, timeoutMs, ...(callerSignal ? { signal: callerSignal } : {}) });
   // Resolve relative periods once, then reuse the exact bounds for count/query.
   const end = request.preset === "custom" ? request.end : new Date(Math.floor(now().getTime() / 1000) * 1000).toISOString();
@@ -153,6 +155,10 @@ export async function loadTimeRange(request: EarthquakeRequest, { fetcher = fetc
   });
   if (magnitude.minimum !== null) parameters.set("minmagnitude", String(magnitude.minimum));
   if (magnitude.maximum !== null) parameters.set("maxmagnitude", String(magnitude.maximum));
+  if (area !== "worldwide") {
+    parameters.set("minlatitude", String(area.south)); parameters.set("maxlatitude", String(area.north));
+    parameters.set("minlongitude", String(area.west)); parameters.set("maxlongitude", String(area.east));
+  }
   async function getJson(url: string): Promise<unknown | null> {
     try {
       const response = await fetcher(url, { signal, headers: { Accept: "application/json", "User-Agent": "EarthquakeExplorer/0.1" } });

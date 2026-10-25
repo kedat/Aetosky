@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { OverviewSnapshot, EarthquakeRequest, ApiError } from "@earthquake/shared";
+import { sameArea } from "./area";
 
 interface RequestState {
   status: "loading" | "ready" | "error";
@@ -19,6 +20,10 @@ function requestUrl(time: EarthquakeRequest): string {
   }
   if (time.minMagnitude !== undefined) query.set("minmagnitude", String(time.minMagnitude));
   if (time.maxMagnitude !== undefined) query.set("maxmagnitude", String(time.maxMagnitude));
+  if (time.area) {
+    query.set("minlatitude", String(time.area.south)); query.set("maxlatitude", String(time.area.north));
+    query.set("minlongitude", String(time.area.west)); query.set("maxlongitude", String(time.area.east));
+  }
   return `/api/earthquakes?${query}`;
 }
 
@@ -40,7 +45,7 @@ function validSnapshot(snapshot: OverviewSnapshot, requested: EarthquakeRequest)
         nullableNumber(event.magnitude) && nullableNumber(event.depthKm) && date(event.occurredAt) && (event.updatedAt === null || date(event.updatedAt)) &&
         [event.magnitudeType, event.place, event.reviewStatus, event.url].every(nullableString);
     }) &&
-    (snapshot.scope.area === "worldwide" && !requested.area) && time?.preset === requested.preset &&
+    sameArea(snapshot.scope.area === "worldwide" ? null : snapshot.scope.area, requested.area) && time?.preset === requested.preset &&
     snapshot.scope.magnitude?.minimum === (requested.minMagnitude ?? null) && snapshot.scope.magnitude.maximum === (requested.maxMagnitude ?? null) &&
     source?.name === "USGS" && typeof source.url === "string" && Number.isFinite(Date.parse(source.retrievedAt)) &&
     (source.generatedAt === null || Number.isFinite(Date.parse(source.generatedAt))) &&

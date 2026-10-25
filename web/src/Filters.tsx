@@ -1,7 +1,8 @@
-import type { TimePreset } from "@earthquake/shared";
+import type { TimePreset, AreaBounds } from "@earthquake/shared";
 import { displayTimeZone } from "./formatting";
 import type { TimeDraft, TimeErrors } from "./timeRange";
 import type { MagnitudeDraft, MagnitudeErrors } from "./magnitudeRange";
+import { areaLabel } from "./area";
 
 interface Props {
   draft: TimeDraft;
@@ -15,12 +16,20 @@ interface Props {
   onChange: (draft: TimeDraft) => void;
   onMagnitudeChange: (draft: MagnitudeDraft) => void;
   onApply: () => void;
+  area: AreaBounds | null;
+  canCapture: boolean;
+  onCapture: () => void;
 }
 
-export function Filters({ draft, errors, magnitude, magnitudeErrors, pending, busy, initialLoading, valid, onChange, onMagnitudeChange, onApply }: Props) {
+export function Filters({ draft, errors, magnitude, magnitudeErrors, pending, busy, initialLoading, valid, onChange, onMagnitudeChange, onApply, area, canCapture, onCapture }: Props) {
   return <form className="time-filters" aria-label="Earthquake filters" noValidate onSubmit={event => { event.preventDefault(); if (!busy && valid && pending) onApply(); }}>
     <fieldset disabled={initialLoading}>
       <legend className="visually-hidden">Filter earthquake activity</legend>
+      <div className="area-input" role="group" aria-label="Area filter">
+        <span className="filter-label">Area of interest</span>
+        <div className="area-actions"><button type="button" className="secondary-button" onClick={onCapture} disabled={!canCapture}>Use current map bounds</button></div>
+        <output className="area-description" aria-label="Pending area">{area ? areaLabel(area) : "Worldwide"}</output>
+      </div>
       <div className="filter-input period-input"><label htmlFor="time-preset">Time range</label>
         <select id="time-preset" value={draft.preset} onChange={event => onChange({ ...draft, preset: event.target.value as TimePreset })}>
           <option value="past-24-hours">Past 24 hours</option><option value="past-7-days">Past 7 days</option><option value="custom">Custom range</option>

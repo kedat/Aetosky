@@ -27,7 +27,7 @@ export function createApp(load: (signal?: AbortSignal) => Promise<OverviewSnapsh
       response.status(code === "RESULT_LIMIT_EXCEEDED" ? 422 : 502).json({ error: {
         code,
         message: code === "RESULT_LIMIT_EXCEEDED"
-          ? "More than 5,000 earthquakes match these filters. Narrow the time or magnitude range."
+          ? "More than 5,000 earthquakes match these filters. Narrow the area, time, or magnitude range."
           : "Couldn't load earthquake data from USGS. Please try again.",
       } } satisfies ApiError);
     }

@@ -1,6 +1,6 @@
-# Earthquake Explorer — Task 4
+# Earthquake Explorer — Task 5
 
-Independent magnitude filters. React and Node.js use TypeScript with pnpm.
+Captured map bounds. React and Node.js use TypeScript with pnpm.
 
 ## Run
 

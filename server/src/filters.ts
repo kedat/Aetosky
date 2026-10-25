@@ -1,5 +1,6 @@
 import type { EarthquakeRequest, MagnitudeBounds } from "@earthquake/shared";
 import { parseTimeQuery } from "./time.js";
+import { normalizeArea } from "./area.js";
 
 export class InvalidFilterError extends Error {}
 
@@ -12,10 +13,10 @@ function magnitude(value: unknown, label: string): number | undefined {
 }
 
 export function parseFilters(query: Record<string, unknown>): EarthquakeRequest {
-  if (Object.keys(query).some(key => !["preset", "starttime", "endtime", "minmagnitude", "maxmagnitude"].includes(key))) {
+  if (Object.keys(query).some(key => !["preset", "starttime", "endtime", "minmagnitude", "maxmagnitude", "minlatitude", "maxlatitude", "minlongitude", "maxlongitude"].includes(key))) {
     throw new InvalidFilterError("Unsupported filter parameter.");
   }
-  const { minmagnitude, maxmagnitude, ...time } = query;
+  const { minmagnitude, maxmagnitude, minlatitude, maxlatitude, minlongitude, maxlongitude, ...time } = query;
   const bounds: MagnitudeBounds = {};
   const minimum = magnitude(minmagnitude, "Minimum");
   const maximum = magnitude(maxmagnitude, "Maximum");
@@ -24,5 +25,12 @@ export function parseFilters(query: Record<string, unknown>): EarthquakeRequest 
   if (minimum !== undefined && maximum !== undefined && minimum > maximum) {
     throw new InvalidFilterError("Maximum magnitude must be greater than or equal to minimum magnitude.");
   }
-  return { ...parseTimeQuery(time), ...bounds };
+  let area;
+  const coordinates = [minlatitude, maxlatitude, minlongitude, maxlongitude];
+  if (coordinates.some(value => value !== undefined)) {
+    if (coordinates.some(value => typeof value !== "string" || !value.trim() || !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(value.trim()))) throw new InvalidFilterError("Provide all four map bounds as finite numbers.");
+    try { area = normalizeArea({ south: Number(minlatitude), north: Number(maxlatitude), west: Number(minlongitude), east: Number(maxlongitude) }); }
+    catch { throw new InvalidFilterError("Provide valid nonempty map bounds within latitude −90 to 90."); }
+  }
+  return { ...parseTimeQuery(time), ...bounds, ...(area ? { area } : {}) };
 }

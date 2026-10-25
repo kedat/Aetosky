@@ -5,6 +5,7 @@ import type { LeafletEventHandlerFnMap, TileErrorEvent } from "leaflet";
 import { EarthquakeMap } from "../EarthquakeMap";
 
 const layer = vi.hoisted(() => ({ handlers: {} as LeafletEventHandlerFnMap }));
+vi.mock("../MapControls", () => ({ MapControls: () => null, WORLD_BOUNDS: [[-60, -180], [75, 180]] }));
 vi.mock("react-leaflet", () => ({
   MapContainer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   TileLayer: ({ eventHandlers }: { eventHandlers: LeafletEventHandlerFnMap }) => {
