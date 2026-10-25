@@ -10,11 +10,16 @@
     "dev": "pnpm --parallel --filter @earthquake/server --filter @earthquake/web dev",
     "dev:server": "pnpm --filter @earthquake/server dev",
     "dev:web": "pnpm --filter @earthquake/web dev",
-    "typecheck": "pnpm -r --if-present typecheck",
+    "typecheck": "pnpm -r --if-present typecheck && tsc -p tsconfig.e2e.json --noEmit",
     "test:server": "pnpm --filter @earthquake/server test",
     "test:web": "pnpm --filter @earthquake/web test",
     "build": "pnpm -r --if-present build",
-    "start:server": "pnpm --filter @earthquake/server start"
+    "start:server": "pnpm --filter @earthquake/server start",
+    "test:e2e": "playwright test --project=chromium --project=mobile-chromium --project=webkit",
+    "test:e2e:live": "playwright test --config playwright.live.config.ts",
+    "test:e2e:report": "playwright show-report",
+    "check": "pnpm typecheck && pnpm test:server && pnpm test:web && pnpm build && pnpm test:e2e",
+    "test:e2e:firefox": "playwright test --project=firefox"
   },
   "devDependencies": {
     "@earthquake/shared": "workspace:*",
