@@ -1,6 +1,6 @@
-# Earthquake Explorer — Task 5
+# Earthquake Explorer — Task 6
 
-Captured map bounds. React and Node.js use TypeScript with pnpm.
+Independent clearing and Reset. React and Node.js use TypeScript with pnpm.
 
 ## Run
 

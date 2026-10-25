@@ -19,21 +19,24 @@ interface Props {
   area: AreaBounds | null;
   canCapture: boolean;
   onCapture: () => void;
+  onClearArea: () => void;
 }
 
-export function Filters({ draft, errors, magnitude, magnitudeErrors, pending, busy, initialLoading, valid, onChange, onMagnitudeChange, onApply, area, canCapture, onCapture }: Props) {
+export function Filters({ draft, errors, magnitude, magnitudeErrors, pending, busy, initialLoading, valid, onChange, onMagnitudeChange, onApply, area, canCapture, onCapture, onClearArea }: Props) {
   return <form className="time-filters" aria-label="Earthquake filters" noValidate onSubmit={event => { event.preventDefault(); if (!busy && valid && pending) onApply(); }}>
     <fieldset disabled={initialLoading}>
       <legend className="visually-hidden">Filter earthquake activity</legend>
       <div className="area-input" role="group" aria-label="Area filter">
         <span className="filter-label">Area of interest</span>
-        <div className="area-actions"><button type="button" className="secondary-button" onClick={onCapture} disabled={!canCapture}>Use current map bounds</button></div>
+        <div className="area-actions"><button type="button" className="secondary-button" onClick={onCapture} disabled={!canCapture}>Use current map bounds</button>
+          {area && <button type="button" className="clear-button" onClick={onClearArea}>Clear area</button>}</div>
         <output className="area-description" aria-label="Pending area">{area ? areaLabel(area) : "Worldwide"}</output>
       </div>
       <div className="filter-input period-input"><label htmlFor="time-preset">Time range</label>
         <select id="time-preset" value={draft.preset} onChange={event => onChange({ ...draft, preset: event.target.value as TimePreset })}>
           <option value="past-24-hours">Past 24 hours</option><option value="past-7-days">Past 7 days</option><option value="custom">Custom range</option>
         </select>
+        {draft.preset !== "past-24-hours" && <button type="button" className="clear-button" onClick={() => onChange({ ...draft, preset: "past-24-hours" })}>Restore past 24 hours</button>}
       </div>
       {draft.preset === "custom" && <>
         <div className="filter-input time-input"><label htmlFor="time-start">Start date and time</label>
@@ -54,6 +57,7 @@ export function Filters({ draft, errors, magnitude, magnitudeErrors, pending, bu
             onChange={event => onMagnitudeChange({ ...magnitude, minimum: event.target.value })} />
           <span id="magnitude-minimum-error" className="field-error">{magnitudeErrors.minimum}</span>
         </div>
+        {(magnitude.minimum || magnitude.maximum) && <button type="button" className="clear-button magnitude-clear" onClick={() => onMagnitudeChange({ minimum: "", maximum: "" })}>Clear magnitude</button>}
         <div className="filter-input"><label htmlFor="magnitude-maximum">Maximum magnitude</label>
           <input id="magnitude-maximum" type="text" inputMode="decimal" placeholder="Any" value={magnitude.maximum}
             aria-invalid={!!magnitudeErrors.maximum} aria-describedby="magnitude-maximum-error"

@@ -14,6 +14,7 @@ export interface EarthquakeMapProps {
   onViewportChange?: (area: AreaBounds) => void;
   draftArea?: AreaBounds | null;
   appliedArea?: AreaBounds | null;
+  resetVersion?: number;
 }
 
 function EarthquakeMarker({ event, selected, onSelect }: { event: Earthquake; selected: boolean; onSelect: (id: string) => void }) {
@@ -53,7 +54,7 @@ function EarthquakeMarker({ event, selected, onSelect }: { event: Earthquake; se
       weight: selected ? 3 : 1.2, fillColor: event.magnitude === null ? "#94a3b8" : "#ef7846", fillOpacity: selected ? 0.95 : 0.65 }} />;
 }
 
-export function EarthquakeMap({ events, selectedId, onSelect, onViewportChange, draftArea, appliedArea }: EarthquakeMapProps) {
+export function EarthquakeMap({ events, selectedId, onSelect, onViewportChange, draftArea, appliedArea, resetVersion }: EarthquakeMapProps) {
   const renderer = useMemo(() => new SVG({ padding: 0.5 }), []);
   const failedTiles = useRef(new Set<HTMLImageElement>());
   const [tilesFailed, setTilesFailed] = useState(false);
@@ -63,7 +64,7 @@ export function EarthquakeMap({ events, selectedId, onSelect, onViewportChange, 
   return <section className="map-frame" aria-label="Worldwide earthquake map">
     <MapContainer bounds={WORLD_BOUNDS} boundsOptions={{ padding: [12, 12] }} minZoom={0} maxZoom={18}
       worldCopyJump={true} renderer={renderer} className="earthquake-map">
-      <MapControls {...(onViewportChange ? { onViewportChange } : {})} />
+      <MapControls {...(onViewportChange ? { onViewportChange } : {})} {...(resetVersion !== undefined ? { resetVersion } : {})} />
       <TileLayer url={import.meta.env.VITE_TILE_URL ?? "https://tile.openstreetmap.org/{z}/{x}/{y}.png"}
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         eventHandlers={{

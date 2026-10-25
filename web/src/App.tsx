@@ -15,6 +15,7 @@ export function App() {
   const [magnitude, setMagnitude] = useState({ minimum: "", maximum: "" });
   const [area, setArea] = useState<AreaBounds | null>(null);
   const [viewport, setViewport] = useState<AreaBounds | null>(null);
+  const [resetVersion, setResetVersion] = useState(0);
   const validation = validateTimeDraft(draft);
   const magnitudeValidation = validateMagnitudeDraft(magnitude);
   const requested = validation.request && magnitudeValidation.bounds ? { ...validation.request, ...magnitudeValidation.bounds, ...(area ? { area } : {}) } : null;
@@ -35,13 +36,18 @@ export function App() {
     if (snapshot && selectedId && !snapshot.events.some(event => event.id === selectedId)) setSelectedId(null);
   }, [snapshot, selectedId]);
   const selectedEvent = snapshot?.events.find(event => event.id === selectedId) ?? null;
+  const reset = () => {
+    setDraft(initialTimeDraft()); setMagnitude({ minimum: "", maximum: "" }); setArea(null); setSelectedId(null);
+    setResetVersion(value => value + 1);
+    void request({ preset: "past-24-hours" }, "reset");
+  };
   return <div className="app-shell">
     <header className="app-header">
       <a className="brand" href="/" aria-label="Earthquake Explorer home">
         <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12" /><circle cx="16" cy="16" r="7" /><circle cx="16" cy="16" r="2" /></svg>
         <span>Earthquake<span className="brand-light"> Explorer</span></span>
       </a>
-      <div className="header-actions">
+      <div className="header-actions"><button className="secondary-button" type="button" onClick={reset}>Reset overview</button>
         <a className="source-link" href="https://earthquake.usgs.gov/" target="_blank" rel="noreferrer">Data by USGS <span aria-hidden="true">↗</span></a></div>
     </header>
 
@@ -56,7 +62,7 @@ export function App() {
       <Filters draft={draft} errors={validation.errors} magnitude={magnitude} magnitudeErrors={magnitudeValidation.errors}
         pending={pending} busy={state.status === "loading"} initialLoading={!snapshot && state.status === "loading"}
         valid={!!requested} onChange={setDraft} onMagnitudeChange={setMagnitude}
-        area={area} canCapture={!!viewport} onCapture={() => { if (viewport) setArea({ ...viewport }); }}
+        area={area} canCapture={!!viewport} onCapture={() => { if (viewport) setArea({ ...viewport }); }} onClearArea={() => setArea(null)}
         onApply={() => {
           if (requested) {
             void request(requested);
@@ -80,7 +86,7 @@ export function App() {
 
       <div className="map-section" aria-busy={state.status === "loading"}>
         <EarthquakeMap events={snapshot?.events ?? []} selectedId={selectedEvent?.id ?? null} onSelect={selectEvent}
-          onViewportChange={setViewport} draftArea={area} appliedArea={snapshot?.scope.area === "worldwide" ? null : snapshot?.scope.area ?? null} />
+          onViewportChange={setViewport} draftArea={area} appliedArea={snapshot?.scope.area === "worldwide" ? null : snapshot?.scope.area ?? null} resetVersion={resetVersion} />
         {selectedEvent && <EventDetails event={selectedEvent} onClose={closeDetails} />}
         {!snapshot && state.status === "loading" && <div className="map-notice" role="status"><span className="spinner" aria-hidden="true" /><strong>Loading earthquake activity…</strong><span>Getting earthquake data from USGS.</span></div>}
         {!snapshot && state.status === "error" && <div className="map-notice" role="alert"><span className="notice-icon" aria-hidden="true">!</span><strong>Earthquake data couldn't load.</strong><span>{state.error}</span><button onClick={() => void request(state.requested, state.intent)}>Retry</button></div>}
