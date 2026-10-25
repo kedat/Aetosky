@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.tools/
+.pnpm-store/
+.env
+*.tsbuildinfo
+.DS_Store
+playwright-report/
+playwright-live-report/
+test-results/

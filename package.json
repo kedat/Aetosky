@@ -1,0 +1,26 @@
+{
+  "name": "earthquake-explorer",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.20.0",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @earthquake/server --filter @earthquake/web dev",
+    "dev:server": "pnpm --filter @earthquake/server dev",
+    "dev:web": "pnpm --filter @earthquake/web dev",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test:server": "pnpm --filter @earthquake/server test",
+    "test:web": "pnpm --filter @earthquake/web test",
+    "build": "pnpm -r --if-present build",
+    "start:server": "pnpm --filter @earthquake/server start"
+  },
+  "devDependencies": {
+    "@earthquake/shared": "workspace:*",
+    "@playwright/test": "1.64.1",
+    "@types/node": "24.9.1",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3"
+  }
+}
