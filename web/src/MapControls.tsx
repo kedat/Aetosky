@@ -15,9 +15,20 @@ export function MapControls({ onViewportChange, resetVersion = 0 }: { onViewport
       if (!Object.values(area).every(Number.isFinite) || area.south >= area.north || area.west === area.east) return;
       onViewportChange?.(normalizeArea(area));
     };
-    const resize = update;
+    let fitted = false;
+    const resize = () => {
+      map.invalidateSize({ pan: false, animate: false });
+      const container = map.getContainer();
+      if (!fitted && container.clientWidth > 0 && container.clientHeight > 0) {
+        fitted = true;
+        map.fitBounds(WORLD_BOUNDS, { padding: [12, 12], animate: false });
+      }
+      update();
+    };
+    const observer = new ResizeObserver(resize);
+    observer.observe(map.getContainer());
     map.on("moveend zoomend resize", update); resize();
-    return () => { map.off("moveend zoomend resize", update); };
+    return () => { observer.disconnect(); map.off("moveend zoomend resize", update); };
   }, [map, onViewportChange]);
   useEffect(() => {
     if (resetVersion) map.stop().fitBounds(WORLD_BOUNDS, { padding: [12, 12], animate: false });

@@ -16,6 +16,8 @@ export function App() {
   const [area, setArea] = useState<AreaBounds | null>(null);
   const [viewport, setViewport] = useState<AreaBounds | null>(null);
   const [resetVersion, setResetVersion] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(() => window.innerWidth > 600);
+  const filterSummary = useRef<HTMLElement>(null);
   const validation = validateTimeDraft(draft);
   const magnitudeValidation = validateMagnitudeDraft(magnitude);
   const requested = validation.request && magnitudeValidation.bounds ? { ...validation.request, ...magnitudeValidation.bounds, ...(area ? { area } : {}) } : null;
@@ -39,6 +41,7 @@ export function App() {
   const reset = () => {
     setDraft(initialTimeDraft()); setMagnitude({ minimum: "", maximum: "" }); setArea(null); setSelectedId(null);
     setResetVersion(value => value + 1);
+    if (window.innerWidth <= 600) setFiltersOpen(false);
     void request({ preset: "past-24-hours" }, "reset");
   };
   return <div className="app-shell">
@@ -58,7 +61,8 @@ export function App() {
         <div className="period-badge"><span className="clock-icon" aria-hidden="true">◷</span> {periodLabel(snapshot?.scope.time.preset ?? "past-24-hours")}</div>
       </div>
 
-      <div className="filter-panel">
+      <details className="filter-disclosure" open={filtersOpen} onToggle={event => setFiltersOpen(event.currentTarget.open)}>
+      <summary ref={filterSummary}>Filters <span>{pending && state.applied ? "Changes pending" : "Area, time and magnitude"}</span></summary>
       <Filters draft={draft} errors={validation.errors} magnitude={magnitude} magnitudeErrors={magnitudeValidation.errors}
         pending={pending} busy={state.status === "loading"} initialLoading={!snapshot && state.status === "loading"}
         valid={!!requested} onChange={setDraft} onMagnitudeChange={setMagnitude}
@@ -66,9 +70,10 @@ export function App() {
         onApply={() => {
           if (requested) {
             void request(requested);
+            if (window.innerWidth <= 600) { setFiltersOpen(false); filterSummary.current?.focus({ preventScroll: true }); }
           }
         }} />
-      </div>
+      </details>
 
       {snapshot && state.status === "loading" && <div className="request-banner" role="status"><span className="spinner" aria-hidden="true" />{state.intent === "reset" ? "Returning to overview." : `Updating to ${periodLabel(state.requested.preset)} · ${magnitudeLabel({ minimum: state.requested.minMagnitude ?? null, maximum: state.requested.maxMagnitude ?? null })}${state.requested.area ? " · selected map bounds" : " · worldwide"}.`} Previous results and scope remain displayed.</div>}
       {snapshot && state.status === "error" && <div className="request-banner request-error" role="alert"><span>{state.error} Previous results and scope remain displayed.</span><button onClick={() => void request(state.requested, state.intent)}>Retry</button></div>}

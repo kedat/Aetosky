@@ -1,6 +1,6 @@
-# Earthquake Explorer — Task 6
+# Earthquake Explorer — Task 7
 
-Independent clearing and Reset. React and Node.js use TypeScript with pnpm.
+Responsive layout and request regression coverage. React and Node.js use TypeScript with pnpm.
 
 ## Run
 
